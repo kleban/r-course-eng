@@ -3,4 +3,4 @@
 ~*.pptx
 *.pdf
 *.RData
-.ipynb_checkpoints/023_Basics. Vectors. DataFrames-checkpoint.ipynb
+.vs
