@@ -1,6 +1,6 @@
-
-.ipynb_checkpoints/
 ~*.pptx
 *.pdf
 *.RData
 .vs
+
+.ipynb_checkpoints
