@@ -1,2 +1,5 @@
 
-pptx/~$00_Course.pptx
+.ipynb_checkpoints/
+~*.pptx
+*.pdf
+*.RData
