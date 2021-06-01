@@ -3,4 +3,4 @@
 *.RData
 .vs
 
-.ipynb_checkpoints
+*checkpoint.ipynb
