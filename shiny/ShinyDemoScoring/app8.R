@@ -26,7 +26,9 @@ ui <- dashboardPage(
             menuItem("Demo", tabName = "demo", icon = icon("th")),
             menuItem("Data", tabName = "dataset", icon = icon("database")),
             menuItem("EDA", tabName = "charts", icon = icon("bar-chart")),            
-            menuItem("Train/test split", tabName = "split", icon = icon("bar-chart"))
+            menuItem("Train/test split", tabName = "split", icon = icon("tasks")),
+            menuItem("Build models", tabName = "models", icon = icon("random")),  
+            menuItem("Test models", tabName = "test", icon = icon("asterisk"))
         )
     ),
     dashboardBody(
@@ -85,10 +87,53 @@ ui <- dashboardPage(
                                  rHandsontableOutput("split_train_table")),
                           column(width = 6, 
                                  h2("Test set"),
-                                 rHandsontableOutput("split_test_table")))))
+                                 rHandsontableOutput("split_test_table"))))),
+            
+            tabItem(tabName = "models",
+                    box(title = "Click to billd models: logistic regression and neural netowrk:", 
+                        width =12,
+                        fluidRow(
+                          column(12, actionButton("modelIt", "Build models"))
+                        ),
+                        hr(),
+                        fluidRow(
+                          column(width = 6,
+                                 h2("Variables importance LR:"),
+                                 plotOutput("impGlmPlot", height = 450)),
+                          column(width = 6,
+                                 h2("Variables importance NN:"),
+                                 plotOutput("impNnPlot", height = 450))
+                        ))),
+            
+            tabItem(tabName = "test", 
+                    box(title = "Models compare", width = 12,
+                        fluidRow(
+                          column(width = 12,
+                                 sliderInput("sliderCutoff", "Cutoff:", 0, 100, 50)
+                                 )
+                        ),
+                        fluidRow(
+                          column(width = 6,
+                                 h2("Logistic regression"),
+                                 h4("Confusion matrix"),
+                                 rHandsontableOutput("glm_cf"),
+                                 h4("Accuracy"),
+                                 rHandsontableOutput("glm_acc"),
+                                 h4("ROC"),
+                                 plotOutput("glm_roc", height = 400)
+                                 ),
+                          column(width = 6,
+                                 h2("Neural network"),
+                                 h4("Confusion matrix"),
+                                 rHandsontableOutput("nn_cf"),
+                                 h4("Accuracy"),
+                                 rHandsontableOutput("nn_acc"),
+                                 h4("ROC"),
+                                 plotOutput("nn_roc", height = 400)
+                          ))))
+            )
         )
     )
-)
 
 server <- function(input, output, session) {
     
@@ -102,7 +147,9 @@ server <- function(input, output, session) {
     target_variable = "Status" # its fixed!
     
     train_set <- reactiveValues(data = NULL)
-    test_set <- reactiveValues(data = NULL)
+    test_set <- reactiveValues(data = NULL, 
+                               glm = NULL, 
+                               prediction_glm = NULL)
 
     output$plot1 <- renderPlot({
         
@@ -149,6 +196,24 @@ server <- function(input, output, session) {
       train_set$data <- my_data[trainIndex, ]
       test_set$data <- my_data[-trainIndex, ]
     })
+
+    observeEvent(input$modelIt, {
+      
+      #GLM
+      trainctrl <- trainControl(verboseIter = TRUE) 
+      
+      test_set$glm <- train(as.formula(paste(target_variable, "~ .")), 
+                     data = train_set$data, method = "glm", 
+                     trControl = trainctrl)
+      
+      test_set$prediction_glm <- predict(test_set$glm, newdata = test_set$data)
+      
+      test_set$nn <- train(as.formula(paste(target_variable, "~ .")), 
+                    data = train_set$data, 
+                    method = "nnet") 
+      
+     test_set$prediction_nn <- predict(test_set$nn, newdata = test_set$data)
+    })
     
     output$split_test_table = renderRHandsontable({
       
@@ -166,6 +231,71 @@ server <- function(input, output, session) {
       }
     })
     
+    output$impGlmPlot <- renderPlot({
+      
+      imp <- varImp(test_set$glm)
+      plot(imp)
+      
+    })
+    
+    output$impNnPlot <- renderPlot({
+      
+      imp <- varImp(test_set$nn)
+      plot(imp)
+  })
+    
+    
+    output$glm_cf = renderRHandsontable({
+      
+      if(!is.null(test_set$prediction_glm)) {
+        cm <- caret::confusionMatrix(factor(test_set$data$Status),  factor(ifelse(test_set$prediction_glm > input$sliderCutoff/100, 1, 0)), positive = "1")
+        df <-  data.frame(X0 = cm$table[,1], X1 = cm$table[,2])
+        colnames(df) <- c("Actual_0", "Actual_1")
+        rownames(df) <- c("Pred_0", "Pred_1")
+        rhandsontable(data.frame(df))
+      }
+    })
+    
+    output$nn_cf = renderRHandsontable({
+      
+      if(!is.null(test_set$prediction_nn)) {
+        cm <- caret::confusionMatrix(factor(test_set$data$Status),  factor(ifelse(test_set$prediction_nn > input$sliderCutoff/100, 1, 0)), positive = "1")
+        df <-  data.frame(X0 = cm$table[,1], X1 = cm$table[,2])
+        colnames(df) <- c("Actual_0", "Actual_1")
+        rownames(df) <- c("Pred_0", "Pred_1")
+        rhandsontable(data.frame(df))
+      }
+    })
+    
+    output$glm_acc = renderRHandsontable({
+      
+      if(!is.null(test_set$prediction_glm)) {
+        cm <- caret::confusionMatrix(factor(test_set$data$Status),  factor(ifelse(test_set$prediction_glm > input$sliderCutoff/100, 1, 0)), positive = "1")
+        df <-  data.frame(Metric = c("Accuracy", "Balanced Accuracy"),
+                          Value = c(cm$overall["Accuracy"],
+                                    cm$byClass["Balanced Accuracy"]))
+        rhandsontable(data.frame(df))
+      }
+    })
+    
+    output$nn_acc = renderRHandsontable({
+      
+      if(!is.null(test_set$prediction_nn)) {
+        cm <- caret::confusionMatrix(factor(test_set$data$Status),  factor(ifelse(test_set$prediction_nn > input$sliderCutoff/100, 1, 0)), positive = "1")
+        df <-  data.frame(Metric = c("Accuracy", "Balanced Accuracy"),
+                          Value = c(cm$overall["Accuracy"],
+                                    cm$byClass["Balanced Accuracy"]))
+        rhandsontable(data.frame(df))
+      }
+    })
+    
+    output$glm_roc <- renderPlot({
+      InformationValue::plotROC(test_set$data$Status, test_set$prediction_glm)
+    })
+    
+    output$nn_roc <- renderPlot({
+      InformationValue::plotROC(test_set$data$Status, test_set$prediction_nn)
+    })
     
     
     observe({

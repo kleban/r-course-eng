@@ -78,7 +78,7 @@ server <- function(input, output, session) {
     
     my_data <- read.csv("data/scoring.csv")
     
-    target_variable = "Status" # its fixed!
+    target_variable = "deposit" # its fixed!
 
     output$plot1 <- renderPlot({
         
