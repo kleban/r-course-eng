@@ -24,6 +24,18 @@ test_set$prediction_glm <- predict(glmFit, newdata = test_set$data)
 
 cm <- caret::confusionMatrix(factor(test_set$data$Status),  factor(ifelse(test_set$prediction_glm > 0.5, 1, 0)), positive = "1")
 cm$table
+
+class(cm$table)
+as.data.frame(cm$table)
+
+df <-  data.frame(X0 = cm$table[,1], X1 = cm$table[,2])
+colnames(df) <- c("Actual 0", "Actual 1")
+rownames(df) <- c("Predicted 0", "Predicted 1")
+df 
+cm$table[1,]
+cm$table[2,]
+
+
 cm$overall["Accuracy"]
 cm$byClass["Balanced Accuracy"]
 
