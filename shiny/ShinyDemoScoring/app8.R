@@ -26,7 +26,8 @@ ui <- dashboardPage(
             menuItem("Demo", tabName = "demo", icon = icon("th")),
             menuItem("Data", tabName = "dataset", icon = icon("database")),
             menuItem("EDA", tabName = "charts", icon = icon("bar-chart")),            
-            menuItem("Train/test split", tabName = "split", icon = icon("bar-chart"))
+            menuItem("Train/test split", tabName = "split", icon = icon("tasks")),
+            menuItem("Build models", tabName = "models", icon = icon("random"))
         )
     ),
     dashboardBody(
@@ -85,10 +86,26 @@ ui <- dashboardPage(
                                  rHandsontableOutput("split_train_table")),
                           column(width = 6, 
                                  h2("Test set"),
-                                 rHandsontableOutput("split_test_table")))))
+                                 rHandsontableOutput("split_test_table"))))),
+            
+            tabItem(tabName = "models",
+                    box(title = "Click to billd models: logistic regression and neural netowrk:", 
+                        width =12,
+                        fluidRow(
+                          column(12, actionButton("modelIt", "Build models"))
+                        ),
+                        hr(),
+                        fluidRow(
+                          column(width = 6,
+                                 h2("Variables importance LR:"),
+                                 plotOutput("impGlmPlot", height = 450)),
+                          column(width = 6,
+                                 h2("Variables importance NN:"),
+                                 plotOutput("impNnPlot", height = 450))
+                        )))
+            )
         )
     )
-)
 
 server <- function(input, output, session) {
     
@@ -102,7 +119,9 @@ server <- function(input, output, session) {
     target_variable = "Status" # its fixed!
     
     train_set <- reactiveValues(data = NULL)
-    test_set <- reactiveValues(data = NULL)
+    test_set <- reactiveValues(data = NULL, 
+                               glm = NULL, 
+                               prediction_glm = NULL)
 
     output$plot1 <- renderPlot({
         
@@ -149,6 +168,24 @@ server <- function(input, output, session) {
       train_set$data <- my_data[trainIndex, ]
       test_set$data <- my_data[-trainIndex, ]
     })
+
+    observeEvent(input$modelIt, {
+      
+      #GLM
+      trainctrl <- trainControl(verboseIter = TRUE) 
+      
+      test_set$glm <- train(as.formula(paste(target_variable, "~ .")), 
+                     data = train_set$data, method = "glm", 
+                     trControl = trainctrl)
+      
+      test_set$prediction_glm <- predict(test_set$glm, newdata = test_set$data)
+      
+      test_set$nn <- train(as.formula(paste(target_variable, "~ .")), 
+                    data = train_set$data, 
+                    method = "nnet") 
+      
+     test_set$prediction_nn <- predict(test_set$nn, newdata = test_set$data)
+    })
     
     output$split_test_table = renderRHandsontable({
       
@@ -165,6 +202,19 @@ server <- function(input, output, session) {
         rhandsontable(data.frame(ct$t) %>% bind_rows(data.frame(round(ct$prop.row*100, 2))))
       }
     })
+    
+    output$impGlmPlot <- renderPlot({
+      
+      imp <- varImp(test_set$glm)
+      plot(imp)
+      
+    })
+    
+    output$impNnPlot <- renderPlot({
+      
+      imp <- varImp(test_set$nn)
+      plot(imp)
+  })
     
     
     
