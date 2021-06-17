@@ -4,3 +4,5 @@
 .vs
 
 *checkpoint.ipynb
+.Rhistory
+.Rproj.user
