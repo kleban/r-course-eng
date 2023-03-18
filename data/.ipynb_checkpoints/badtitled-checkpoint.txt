@@ -1,0 +1,14 @@
+Person.Age,Person__Height,person Weight,Person.Gender,empty
+23,185,NA,Male,NA
+41,175,68.3,   M,NA
+11,142*,55.4,Female,NA
+12,NA,48.2,Man,NA
+54,191,NA,female,NA
+32,168,78,F    ,NA
+22,NA,54,male.,NA
+21,165,NA,m,NA
+14,NA,90.2,Man,NA
+51,250,NA,female,NA
+41,20,81,F    ,NA
+66,NA,59,male.,NA
+71,171,NA,m,NA
